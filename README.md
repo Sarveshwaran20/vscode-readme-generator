@@ -1,71 +1,36 @@
-# readme-generator README
+# AI README Generator
 
-This is the README for your extension "readme-generator". After writing up a brief description, we recommend including the following sections.
+An automated utility for Visual Studio Code that instantly analyzes your active workspace project and writes a professional, comprehensive GitHub `README.md` using native AI infrastructure. No custom API keys or paid tiers required.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- **Zero-Configuration AI:** Taps directly into your local or configured VS Code Language Model API (such as GitHub Copilot) out of the box.
+- **Workspace Analysis:** Smart scanning of top-level directory names and deep context fetching through `package.json` configurations (detecting project names, descriptions, dependencies, and automated run scripts).
+- **Live Review Stream:** Generates the documentation directly inside an unsaved in-memory Markdown editor, letting you preview, edit, and tweak the results before committing files to disk.
+- **Progress Reports:** Uses integration loaders to notify you exactly what step of the workspace evaluation the system is executing.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+To run this extension seamlessly, you need an active Language Model provider mapped inside your VS Code client environment:
 
-## Extension Settings
+- **Recommended:** [GitHub Copilot Extension](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) active and logged into your editor environment.
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## Usage
 
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+1. Open any project workspace folder in VS Code.
+2. Launch the Command Palette using **`Ctrl+Shift+P`** (Windows/Linux) or **`Cmd+Shift+P`** (macOS).
+3. Type and select: **`AI: Generate README.md`**.
+4. Wait for the loading sequence to process. An unsaved workspace document window will populate with your custom structured Markdown content.
+5. Press **`Ctrl+S`** or **`Cmd+S`** to save the generated file directly to your project root.
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- **Large Projects:** Highly nested workspaces with thousands of source elements may hit prompt context truncation windows. The extension focuses on parsing structural files (`package.json`) to safely mitigate this limitation.
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
-
 ### 1.0.0
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+- Initial release.
+- Automated project context mapping via `package.json`.
+- Native VS Code Language Model implementation.

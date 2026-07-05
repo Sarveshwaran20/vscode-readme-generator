@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
+import { TextDecoder } from "util";
+
 export function activate(context: vscode.ExtensionContext) {
   let disposable = vscode.commands.registerCommand(
-    "readme-generator",
+    "readme-generator.generate",
     async () => {
       const workspaceFolders = vscode.workspace.workspaceFolders;
       if (!workspaceFolders) {
@@ -10,91 +12,130 @@ export function activate(context: vscode.ExtensionContext) {
         );
         return;
       }
+
       const rootUri = workspaceFolders[0].uri;
 
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: "Analyzing project files...",
+          title: "Analyzing project code...",
           cancellable: false,
         },
         async (progress) => {
           try {
-            const files = await vscode.workspace.fs.readDirectory(rootUri);
-            const fileNames = files.map(([name]) => name).join(", ");
-
             let projectMetadata = "No package.json metadata available.";
             try {
               const packageJsonUri = vscode.Uri.joinPath(
                 rootUri,
                 "package.json",
               );
-              const fileData =
+              const packageData =
                 await vscode.workspace.fs.readFile(packageJsonUri);
-              const packageJson = JSON.parse(
-                Buffer.from(fileData).toString("utf8"),
-              );
+              projectMetadata = new TextDecoder().decode(packageData);
+            } catch (e) {}
 
-              projectMetadata = `Name: ${packageJson.name || "Unnamed"}
-                        Description: ${packageJson.description || "None"}
-                        Dependencies: ${Object.keys(packageJson.dependencies || {}).join(", ")}
-                        DevDependencies: ${Object.keys(packageJson.devDependencies || {}).join(", ")}
-                        Available Scripts: ${Object.keys(packageJson.scripts || {}).join(", ")}
-                    `;
-            } catch {}
-            progress.report({ message: "Connecting to Language Model..." });
+            const files = await vscode.workspace.fs.readDirectory(rootUri);
+            let codeContext = "";
+            const allowedExtensions = [
+              ".html",
+              ".css",
+              ".js",
+              ".ts",
+              ".json",
+              ".md",
+            ];
 
-            const models = await vscode.lm.selectChatModels();
-            if (models.length === 0) {
-              throw new Error(
-                "No active Language Models found. Please ensure Github Copilot is enabled.",
-              );
+            for (const [name, type] of files) {
+              if (
+                type === vscode.FileType.File &&
+                allowedExtensions.some((ext) => name.endsWith(ext)) &&
+                name !== "package-lock.json"
+              ) {
+                try {
+                  const fileUri = vscode.Uri.joinPath(rootUri, name);
+                  const fileData = await vscode.workspace.fs.readFile(fileUri);
+                  const fileContent = new TextDecoder().decode(fileData);
+                  codeContext += `\n\n--- File: ${name} ---\n${fileContent.substring(0, 2000)}`;
+                } catch (error) {}
+              }
             }
-            const model = models[0];
-            const prompt = `
-				You are an expert technical writer.Generate a comprehensive,professional, and beautiful GitHub README.md for a repository with the following project details:
-				
-				Files in directory: ${fileNames}
-				Project Technical Metadata:
-				${projectMetadata}
-				Requirements
-				-Deduce the main purpose of the project from the data.
-- Provide a clear project title and detailed description.
-- Tailor installation instructions and execution scripts cleanly based on the package dependencies and files.
-- Return ONLY the raw markdown syntax. Do not wrap the output in markdown code blocks (\`\`\`markdown).
-`;
-            const messages = [vscode.LanguageModelChatMessage.User(prompt)];
 
-            const response = await model.sendRequest(
+            const MAX_LENGTH = 12000;
+            if (codeContext.length > MAX_LENGTH) {
+              codeContext =
+                codeContext.substring(0, MAX_LENGTH) +
+                "\n\n... [TRUNCATED due to size limits] ...";
+            }
+
+            const systemPrompt = `You are an expert developer and technical writer. Your task is to analyze the provided code and write a professional README.md for the project.
+
+CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THIS EXACT STRUCTURE IN ORDER:
+
+1. Title + One-sentence description: The project name as an H1, followed by exactly one sentence describing what it is to a human who has never heard of it. Do not describe the internal tech stack here.
+2. Hero Image Placeholder: Add a markdown image tag here (e.g., ![Hero Image](docs/screenshot.png)).
+3. Try It Link Placeholder: Add a bold link pointing to a live demo placeholder.
+4. Quick Start: Provide the absolute fastest way to start using this (e.g., the install command or import statement based on the code). Keep it under 3 commands.
+5. Features: A scannable bulleted list of 3 to 7 specific things the project actually does based on the code context. No marketing fluff.
+6. How to run it locally: Step-by-step instructions for local development. Infer the run commands (like npm run dev) from the package.json file. Mention any obvious dependencies.
+7. How it works: 1 to 2 paragraphs explaining the interesting technical choices, architecture, or libraries used, based strictly on the provided code context.
+8. Credits / Acknowledgements: A simple header with a placeholder for the author to thank people or list asset packs.
+
+Do NOT include conversational filler like "Here is the README you requested". Output ONLY the raw Markdown content.`;
+
+            const userPrompt = `
+Here is the package.json data:
+${projectMetadata}
+
+Here is the code context from the main files:
+${codeContext}`;
+
+            const models = await vscode.lm.selectChatModels({
+              vendor: "copilot",
+            });
+
+            if (models.length === 0) {
+              vscode.window.showErrorMessage(
+                "No AI models found. Please make sure GitHub Copilot is installed and active.",
+              );
+              return;
+            }
+
+            const model = models[0];
+
+            const messages = [
+              vscode.LanguageModelChatMessage.User(systemPrompt),
+              vscode.LanguageModelChatMessage.User(userPrompt),
+            ];
+
+            const chatResponse = await model.sendRequest(
               messages,
               {},
               new vscode.CancellationTokenSource().token,
             );
-            let markdownOutput = "";
 
-            for await (const chunk of response.text) {
-              markdownOutput += chunk;
+            let generatedReadme = "";
+            for await (const fragment of chatResponse.text) {
+              generatedReadme += fragment;
             }
 
-            progress.report({ message: "Opening generated README..." });
-            const doc = await vscode.workspace.openTextDocument({
-              content: markdownOutput,
+            const document = await vscode.workspace.openTextDocument({
+              content: generatedReadme,
               language: "markdown",
             });
 
-            await vscode.window.showTextDocument(doc);
-            vscode.window.showInformationMessage(
-              "README preview generated succesfully! Press Crtl+S/Cmd+S to save it.",
-            );
-          } catch (error: any) {
+            await vscode.window.showTextDocument(document);
+          } catch (error) {
             vscode.window.showErrorMessage(
-              "Error generating README: ${error.message || error",
+              "An error occurred while analyzing the project files.",
             );
+            console.error(error);
           }
         },
       );
     },
   );
+
   context.subscriptions.push(disposable);
 }
+
 export function deactivate() {}
