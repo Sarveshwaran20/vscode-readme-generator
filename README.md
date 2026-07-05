@@ -1,7 +1,8 @@
 # AI README Generator
 
 An automated utility for Visual Studio Code that instantly analyzes your active workspace project and writes a professional, comprehensive GitHub `README.md` using native AI infrastructure. No custom API keys or paid tiers required.
-#:octocat:THE EXTENSION IS UNDER THE NAME:AI BASED README GENERATOR Version 0.0.6
+# THE EXTENSION IS UNDER THE NAME:AI BASED README GENERATOR Version 0.0.6
+:octocat:
 
 ###  [INSTALL THE EXTENSION](https://marketplace.visualstudio.com/items?itemName=SarveshwaranKrishnan.ai-readme-creator-SARV)
 
