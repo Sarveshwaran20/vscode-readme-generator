@@ -1,8 +1,9 @@
 {
   "name": "ai-readme-creator-SARV",
-  "displayName": "AI BASED README GENERATOR Version 0.0.6",
-  "version": "0.0.6",
+  "displayName": "AI BASED README GENERATOR Version 0.0.7",
+  "version": "0.0.7",
   "publisher": "SarveshwaranKrishnan",
+  "icon": "logo.png",
   "engines": {
     "vscode": "^1.90.0"
   },
